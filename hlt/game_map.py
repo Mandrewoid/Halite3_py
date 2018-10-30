@@ -269,12 +269,15 @@ class GameMap:
                     for k in level_2.keys():
                         return k
 
-                else len(level_2) < 1:
+                elif len(level_2) < 1:
+                    logging.info("two directions found for:\n{}\n{}".format(ship,destination))
+                    return Direction.Still
+                    
 
 
 
-            else:
-                return Direction.Still
+                else:
+                    return Direction.Still
 
 
         except Exception as e:
