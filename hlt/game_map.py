@@ -1,10 +1,11 @@
 import queue
-
+from collections import namedtuple
 from . import constants
 from .entity import Entity, Shipyard, Ship, Dropoff
 from .positionals import Direction, Position
 from .common import read_input
-
+import logging
+Navpair  = namedtuple('Navpair', ['position','direction'])
 
 class Player:
     """
@@ -84,6 +85,8 @@ class MapCell:
     """A cell on the game map."""
     def __init__(self, position, halite_amount):
         self.position = position
+        self.x = self.position.x
+        self.y = self.position.y
         self.halite_amount = halite_amount
         self.ship = None
         self.structure = None
@@ -258,24 +261,20 @@ class GameMap:
         """Wrapped so it will log errors"""
         try:
 
-            level_2 ={}
+            level_2 =[]
             for direction in self.get_unsafe_moves(ship.position, destination):
                 target_pos = ship.position.directional_offset(direction)
                 if self[target_pos].is_safe:
-                    level_2[direction] = target_pos # saves a calculation if there's only 1 item in the dict
+                    level_2.append (Navpair(target_pos, direction))
             if level_2:
                 if len(level_2) == 1:
                     logging.info("One direction found for:\n{}\n{}".format(ship,destination))
-                    for k in level_2.keys():
-                        return k
-
+                    for k in level_2:
+                        self[k['position']].mark_unsafe(ship)
+                        return k['direction']
                 elif len(level_2) < 1:
                     logging.info("two directions found for:\n{}\n{}".format(ship,destination))
                     return Direction.Still
-                    
-
-
-
                 else:
                     return Direction.Still
 

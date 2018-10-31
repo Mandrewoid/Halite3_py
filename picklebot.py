@@ -8,16 +8,15 @@ import pickle
 import numpy as np
 # This library contains constant values.
 from hlt import constants
-
+import logging
 # This library contains direction metadata to better interface with the game.
-from hlt.positionals import Direction
+from hlt.positionals import Direction, Position
 
 # This library allows you to generate random numbers.
 import random
 
 # Logging allows you to save messages for yourself. This is required because the regular STDOUT
 #   (print statements) are reserved for the engine-bot communication.
-import logging
 
 """ <<<Game Begin>>> """
 
@@ -33,6 +32,10 @@ game_map = game.game_map
 with open('maplist.p','wb') as f:
     pickle.dump(game_map._cells, f)
     logging.info('pickledumped list')
+
+with open('game_map.p','wb') as f:
+    pickle.dump(game_map, f)
+    logging.info('pickledumped gamemap')
 
 with open('shipyard.p', 'wb') as f:
     me = game.me
@@ -105,10 +108,14 @@ while True:
     me = game.me
     game_map = game.game_map
     command_queue = []
-
-    for ship in me.get_ships():
-        # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
-        #   Else, collect halite.
-        command_queue.append(ship.stay_still())
+    my_ships = me.get_ships()
+    if my_ships and len(my_ships) > 0:
+        for ship in my_ships:
+            # For each of your ships, move randomly if the ship is on a low halite location or the ship is full
+            #   Else, collect halite.
+            #command_queue.append(ship.stay_still())
+            command_queue.append(ship.move(game_map.lookahead_navigate(ship, game_map[Position(0,0)])))
+    else:
+        command_queue.append(me.shipyard.spawn())
     game.end_turn(command_queue)
 
