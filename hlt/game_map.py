@@ -134,7 +134,7 @@ class MapCell:
         """
         self.ship = ship
 
-    def mark_safe(self, ship):
+    def mark_safe(self, *args):
         ship.ship = None
 
 
@@ -258,22 +258,40 @@ class GameMap:
         return Direction.Still
 
     def lookahead_navigate(self, ship, destination):
+        logging.info('Nav for {} to {}'.format(ship, destination))
         """Wrapped so it will log errors"""
         try:
 
             level_2 =[]
             for direction in self.get_unsafe_moves(ship.position, destination):
+                logging.info('checking {}'.format(direction))
                 target_pos = ship.position.directional_offset(direction)
+                logging.info(self[target_pos].is_safe)
                 if self[target_pos].is_safe:
                     level_2.append (Navpair(target_pos, direction))
+
             if level_2:
+                logging.info(level_2)
                 if len(level_2) == 1:
                     logging.info("One direction found for:\n{}\n{}".format(ship,destination))
                     for k in level_2:
                         self[k['position']].mark_unsafe(ship)
                         return k['direction']
-                elif len(level_2) < 1:
+                elif len(level_2) > 1:
                     logging.info("two directions found for:\n{}\n{}".format(ship,destination))
+
+                    direction_1 = level_2[0]
+                    direction_2 = level_2[1]
+                    direction_1_level_3 = self.get_unsafe_moves(direction_1.position, destination)
+                    direction_1_level_3_destinations = \
+                    [direction_1.position.directional_offset(d) for d in direction_1_level_3]
+                    
+                    logging.info('Level_3 of direction 1 {}'.format(direction_1_level_3_destinations))
+                    direction_2_level_3 = self.get_unsafe_moves(direction_2.position, destination)
+                    direction_2_level_3_destinations = \
+                    [direction_2.position.directional_offset(d) for d in direction_2_level_3]
+                    
+                    logging.info('Level_3 of direction 2 {}'.format(direction_2_level_3_destinations))
                     return Direction.Still
                 else:
                     return Direction.Still
