@@ -1,10 +1,12 @@
 import queue
-
+import heapq
+from collections import namedtuple
 from . import constants
 from .entity import Entity, Shipyard, Ship, Dropoff
 from .positionals import Direction, Position
 from .common import read_input
 
+Navpair = namedtuple('Navpair', ["Position", "Direction"])
 
 class Player:
     """
@@ -131,7 +133,7 @@ class MapCell:
         """
         self.ship = ship
 
-    def mark_safe(self, ship):
+    def mark_safe(self, *ship):
         ship.ship = None
 
 
@@ -254,8 +256,26 @@ class GameMap:
 
         return Direction.Still
 
+    def greedy_navigate(self, ship, destination):
+        """ Returns the cheapest safe move towards the destination
+
+        :param ship: the ship to move
+        :param destination:(position object)
+        """
+        candidates = []
+        for direction in self.get_unsafe_moves(ship.position, destination):
+            candidates.append(ship.position.directional_offset(direction))
+
+        candidates.sort(key = lambda x: self[x["Position"]].halite_amount)
+        for target_pos in candidates:
+
+            if self[target_pos].is_safe:
+                self[target_pos].mark_unsafe(ship)
+
+
+
     def lookahead_navigate(self, ship, destination):
-        """Wrapped so it will log errors"""
+        """Wrapped so it will log errors
         try:
 
             level_2 ={}
@@ -279,7 +299,7 @@ class GameMap:
 
         except Exception as e:
             logging.info("NAV ERROR\n,{}\n{}".format(ship, destination))
-            logging.info(e)
+            logging.info(e)"""
             return Direction.Still
 
     @staticmethod
