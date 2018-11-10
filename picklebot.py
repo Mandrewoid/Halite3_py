@@ -6,46 +6,35 @@ import time
 import hlt
 import pickle
 import numpy as np
+import traceback
+import sys
 # This library contains constant values.
 from hlt import constants
-
 # This library contains direction metadata to better interface with the game.
-from hlt.positionals import Direction
-
+from hlt.positionals import Direction, Position
 # This library allows you to generate random numbers.
 import random
-
 # Logging allows you to save messages for yourself. This is required because the regular STDOUT
 #   (print statements) are reserved for the engine-bot communication.
 import logging
-
 """ <<<Game Begin>>> """
-
-# This game object contains the initial game state.
 game = hlt.Game()
 
 start_time = time.process_time()
-# At this point "game" variable is populated with initial map data.
-# This is a good place to do computationally expensive start-up pre-processing.
-# As soon as you call "ready" function below, the 2 second per turn timer will start.
 game_map = game.game_map
-#logging.info(game_map._cells)
 with open('maplist.p','wb') as f:
     pickle.dump(game_map._cells, f)
     logging.info('pickledumped list')
 
-with open('shipyard.p', 'wb') as f:
-    me = game.me
-    pickle.dump(me,f)
-logging.info(me)
-
-a = np.asarray(game_map._cells)
-#probably shouldnt have used b
+#TO ANYONE USING THIS, BE AWARE THE AXES GET SWAPPED DURING THE CONVERSION TO AND FROM NUMPY ARRAYS
+a = np.asarray(game_map._cells) #bad idea to use single letter variables.
+#again, probably shouldnt have used b
 b = np.asarray([i.halite_amount for i in a.flatten()]) # makes a list of all halite amounts. 
                                                        #Reshape with a.shape
 logging.info('Calculate halite amount array')
 logging.info(b)
-b = b.reshape(a.shape)
+b = b.reshape(a.shape) #Take the flat array and make it a square again.
+# I think that is where the X and Y get swapped?
 logging.info('reshaped b {} b[0,0] = {}'.format(b.shape, b[0,0]))
 np.savetxt('halite_amount.csv', b, fmt='%-2.2d', delimiter=',')
 
@@ -60,7 +49,7 @@ np.savetxt('distancehome.csv', d, fmt='%-2.2d', delimiter=',')
 #the heuristic I have decided to use is halite_amt / (2distance_home + 8)
 # 8 turns mines 90% of halite in a cell. for high value cells this is alright.
 # might want to reconsider for lower value cells at some point
-dd = d*2 #probably not necessary but I don't want any orderof operations issues
+dd = d*2 #probably not necessary but I don't want to have to worry about order of operations
 v = b / (dd + 8 )
 logging.info('Calculated per-turn value of each cell')
 np.savetxt('mining-value.csv', d, fmt='%-2.4f', delimiter=',')
@@ -73,32 +62,21 @@ val = v #single character names are probably bad I should stop doing this
 sorted_array = np.dstack(np.unravel_index(np.argsort(np.array(val).ravel()), np.array(val).shape)).reshape(len(val.ravel()), 2) # a 2D array of the indexes for squares from least to highest "value"
 
 priority_list = list(sorted_array) #So I can use priority_list.pop() to get a target to go after
-
-
-
-
-
+#Right now I'm havig an issue where X and Y are flipped here. Trying to debug
+#how to get a target: target_= priority_list.pop()
+#target_1 = Position(*target_1[::-1]) 
+# [::-1] returns a reversed view of the numpy array
+# This effectively Swaps X and Y back so I don't have to figure out how they got swapped in the first palce
 
 finish_time = time.process_time()
 elapsed_time = finish_time - start_time
 logging.info ('setup took {} seconds'.format(elapsed_time))
 game.ready("PickleBot")
-
-
-assignment_dict = {} # here we will store what ships are assigned to what squares
-lookahead_set = set() # use a set because checking for presence is a set is faster
-
-
-
-
-
-
 # Now that your bot is initialized, save a message to yourself in the log file with some important information.
 #   Here, you log here your id, which you can always fetch from the game object by using my_id.
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
-
 """ <<<Game Loop>>> """
-
+assignments = {}
 while True:
     #Begin turn loop here
     game.update_frame()
@@ -107,8 +85,20 @@ while True:
     command_queue = []
 
     for ship in me.get_ships():
-        # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
-        #   Else, collect halite.
-        command_queue.append(ship.stay_still())
+        if ship.id in assignments:
+            if ship.is_full:
+               assignments[ship.id] = me.shipyard.position
+            command_queue.append(
+            ship.move(
+            game_map.greedy_navigate(ship, game_map[assignments[ship.id]])
+            ))
+        else:
+            target = priority_list.pop()
+            target = Position(*target[::-1])        
+            assignments[ship.id] = target
+            command_queue.append(ship.move(game_map.greedy_navigate(ship, game_map[target])))
+
+    if len(me.get_ships()) < 1:
+        command_queue.append(me.shipyard.spawn())
     game.end_turn(command_queue)
 

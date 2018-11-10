@@ -5,7 +5,7 @@ from . import constants
 from .entity import Entity, Shipyard, Ship, Dropoff
 from .positionals import Direction, Position
 from .common import read_input
-
+import logging
 Navpair = namedtuple('Navpair', ["Position", "Direction"])
 
 class Player:
@@ -89,6 +89,8 @@ class MapCell:
         self.halite_amount = halite_amount
         self.ship = None
         self.structure = None
+        self.x = self.position.x
+        self.y = self.position.y
 
     @property
     def is_empty(self):
@@ -262,45 +264,27 @@ class GameMap:
         :param ship: the ship to move
         :param destination:(position object)
         """
+        logging.info("Beginning nav for ship {} to {}".format(ship.id, destination))
         candidates = []
         for direction in self.get_unsafe_moves(ship.position, destination):
-            candidates.append(ship.position.directional_offset(direction))
-
-        candidates.sort(key = lambda x: self[x["Position"]].halite_amount)
-        for target_pos in candidates:
-
-            if self[target_pos].is_safe:
-                self[target_pos].mark_unsafe(ship)
-
-
-
-    def lookahead_navigate(self, ship, destination):
-        """Wrapped so it will log errors
-        try:
-
-            level_2 ={}
-            for direction in self.get_unsafe_moves(ship.position, destination):
-                target_pos = ship.position.directional_offset(direction)
-                if self[target_pos].is_safe:
-                    level_2[direction] = target_pos # saves a calculation if there's only 1 item in the dict
-            if level_2:
-                if len(level_2) == 1:
-                    logging.info("One direction found for:\n{}\n{}".format(ship,destination))
-                    for k in level_2.keys():
-                        return k
-
-                else len(level_2) < 1:
-
-
-
-            else:
-                return Direction.Still
-
-
-        except Exception as e:
-            logging.info("NAV ERROR\n,{}\n{}".format(ship, destination))
-            logging.info(e)"""
+            p = Navpair(ship.position.directional_offset(direction), direction)
+            candidates.append(p)
+        logging.info("Candidates\n{}".format(candidates))
+        if len(candidates) == 0:
             return Direction.Still
+        logging.info('Sorting Candidate moves in order of lowest halite')
+        candidates.sort(key = lambda x: self[x.Position].halite_amount)
+        for target_pair in candidates:
+            if self[target_pair.Position].is_safe:
+                logging.info('Found safe move for ship {}, returning {}'\
+                .format(ship.id, target_pair.Direction))
+                self[target_pair.Position].mark_unsafe(ship)
+                return target_pair.Direction
+            else: 
+                continue
+            logging.info("NO SAFE MOVES FOUND FOR SHIP {}".format(ship.id))
+            return Direction.Still
+
 
     @staticmethod
     def _generate():
