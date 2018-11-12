@@ -19,9 +19,10 @@ import random
 import logging
 """ <<<Game Begin>>> """
 game = hlt.Game()
-
+me = game.me
 start_time = time.process_time()
 game_map = game.game_map
+
 with open('maplist.p','wb') as f:
     pickle.dump(game_map._cells, f)
     logging.info('pickledumped list')
