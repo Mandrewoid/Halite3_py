@@ -9,7 +9,7 @@ import numpy as np
 import traceback
 import sys
 # This library contains constant values.
-from hlt import constants
+from hlt import constants, targets
 # This library contains direction metadata to better interface with the game.
 from hlt.positionals import Direction, Position
 # This library allows you to generate random numbers.
@@ -72,6 +72,7 @@ priority_list = list(sorted_array) #So I can use priority_list.pop() to get a ta
 finish_time = time.process_time()
 elapsed_time = finish_time - start_time
 logging.info ('setup took {} seconds'.format(elapsed_time))
+targets.generate_targets(game)
 game.ready("PickleBot")
 # Now that your bot is initialized, save a message to yourself in the log file with some important information.
 #   Here, you log here your id, which you can always fetch from the game object by using my_id.
@@ -84,8 +85,16 @@ while True:
     me = game.me
     game_map = game.game_map
     command_queue = []
-
+    precalc_time = time.process_time()
+    targets.generate_targets(game)
+    postcalc_time = time.process_time()
+    logging.info("{} seconds to calculate targets within turn loop\n".format(postcalc_time - precalc_time))
     for ship in me.get_ships():
+        mining_value = targets.mining_value(ship, game)
+        returning_value = targets.returning_value(ship, game)
+        logging.info("For ship {} returning value is {}".format(ship.id, returning_value))
+        logging.info("For ship {} mining value is {}".format(ship.id, mining_value))
+        logging.info("Mining value > returning value {}\n".format(mining_value >= returning_value))
         if ship.id in assignments:
             if ship.is_full:
                assignments[ship.id] = me.shipyard.position
